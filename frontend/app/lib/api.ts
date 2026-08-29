@@ -18,3 +18,10 @@ export async function getPrediction(riskFactors: Record<string, number>): Promis
   const response = await axios.post(`${API_BASE_URL}/predict`, riskFactors);
   return response.data;
 }
+export async function notifyAuthorities(recipientEmail: string, stations: any[]) {
+  const response = await axios.post(`${API_BASE_URL}/notify`, {
+    recipient_email: recipientEmail,
+    stations: stations,
+  });
+  return response.data;
+}

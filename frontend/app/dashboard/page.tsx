@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { ShieldAlert, AlertTriangle, TrendingUp, Activity } from "lucide-react";
 import Link from "next/link";
 import { stations } from "../data/stations";
-import { getPrediction } from "../lib/api";
+import { getPrediction, notifyAuthorities } from "../lib/api";
 import { getRiskColor } from "../lib/riskColors";
 import PredictionForm from "../components/PredictionForm";
 import { AlertTriangle as AlertIcon } from "lucide-react";
@@ -35,6 +35,19 @@ export default function Dashboard() {
   const [results, setResults] = useState<StationResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [notifyStatus, setNotifyStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+const handleNotify = async () => {
+  setNotifyStatus("sending");
+  try {
+    const severeStations = results.filter((r) => r.risk_level === "Severe");
+    await notifyAuthorities("godabanithin18@gmail.com", severeStations);
+    setNotifyStatus("sent");
+  } catch (err) {
+    console.error(err);
+    setNotifyStatus("error");
+  }
+};
 
   useEffect(() => {
     async function fetchAllPredictions() {
@@ -161,6 +174,16 @@ export default function Dashboard() {
               flood risk. Immediate monitoring and preparedness measures recommended.
             </div>
           </div>
+                      <button
+              onClick={handleNotify}
+              disabled={notifyStatus === "sending" || notifyStatus === "sent"}
+              className="ml-auto flex-shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              {notifyStatus === "idle" && "Notify Authorities"}
+              {notifyStatus === "sending" && "Sending..."}
+              {notifyStatus === "sent" && "✓ Alert Sent"}
+              {notifyStatus === "error" && "Failed — Retry"}
+            </button>
         </motion.div>
       )}
 

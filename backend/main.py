@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import joblib
 import pandas as pd
+import os
+import requests
 
 # Load trained model and feature list
 model = joblib.load("flood_model.pkl")
@@ -45,6 +49,11 @@ class FloodInput(BaseModel):
     WetlandLoss: float = Field(..., ge=0, le=20)
     InadequatePlanning: float = Field(..., ge=0, le=20)
     PoliticalFactors: float = Field(..., ge=0, le=20)
+
+
+class NotifyRequest(BaseModel):
+    recipient_email: str
+    stations: list[dict]
 
 
 def get_risk_level(probability: float) -> str:
@@ -103,3 +112,57 @@ def predict_flood(data: FloodInput):
         "primary_driver": primary_driver,
         "input_summary": input_dict
     }
+@app.post("/notify")
+def notify_authorities(data: NotifyRequest):
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        return {"status": "error", "message": "Email service not configured on server."}
+
+    station_rows = "".join(
+        f"<tr><td style='padding:8px 12px;border-bottom:1px solid #334155;'>{s['name']}</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #334155;'>{s['district']}</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #334155;color:#ef4444;font-weight:bold;'>{s['risk_level']}</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #334155;'>{s['risk_percentage']}%</td></tr>"
+        for s in data.stations
+    )
+
+    html_body = f"""
+    <div style="font-family:sans-serif;background:#0a0e17;color:#f8fafc;padding:24px;">
+      <h2 style="color:#ef4444;">🚨 Severe Flood Risk Alert — FloodGuard AI</h2>
+      <p>The following station(s) are currently showing <b>Severe</b> flood risk and require immediate attention:</p>
+      <table style="border-collapse:collapse;width:100%;margin-top:12px;">
+        <tr style="background:#111827;">
+          <th style="padding:8px 12px;text-align:left;">Station</th>
+          <th style="padding:8px 12px;text-align:left;">District</th>
+          <th style="padding:8px 12px;text-align:left;">Severity</th>
+          <th style="padding:8px 12px;text-align:left;">Risk Score</th>
+        </tr>
+        {station_rows}
+      </table>
+      <p style="margin-top:20px;color:#94a3b8;font-size:13px;">
+        This is an automated alert from FloodGuard AI — a prototype early warning system.
+        Prediction based on trained model, not an official meteorological forecast.
+      </p>
+    </div>
+    """
+
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "from": "FloodGuard AI <onboarding@resend.dev>",
+                "to": [data.recipient_email],
+                "subject": f"🚨 Severe Flood Risk Alert — {len(data.stations)} Station(s) Affected",
+                "html": html_body,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        return {
+            "status": "sent",
+            "recipient": data.recipient_email,
+            "dispatched_at": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
