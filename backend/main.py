@@ -65,18 +65,41 @@ def root():
 
 @app.post("/predict")
 def predict_flood(data: FloodInput):
-    # Convert input to DataFrame in the exact column order the model expects
-    input_df = pd.DataFrame([data.dict()])[feature_columns]
+    input_dict = data.dict()
+    input_df = pd.DataFrame([input_dict])[feature_columns]
 
     # Predict
     probability = float(model.predict(input_df)[0])
-    probability = max(0.0, min(1.0, probability))  # clamp between 0 and 1
+    probability = max(0.0, min(1.0, probability))
 
     risk_level = get_risk_level(probability)
+
+    # Calculate each factor's real contribution using the model's actual coefficients
+    contributions = {}
+    for i, feature in enumerate(feature_columns):
+        coef = model.coef_[i]
+        value = input_dict[feature]
+        contributions[feature] = coef * value
+
+    total_contribution = sum(contributions.values())
+
+    # Convert to percentage of total predicted risk, sorted highest first
+    factor_breakdown = []
+    if total_contribution > 0:
+        for feature, contribution in sorted(contributions.items(), key=lambda x: x[1], reverse=True)[:5]:
+            percentage = (contribution / total_contribution) * probability * 100
+            factor_breakdown.append({
+                "factor": feature,
+                "contribution_percent": round(percentage, 1)
+            })
+
+    primary_driver = factor_breakdown[0]["factor"] if factor_breakdown else None
 
     return {
         "flood_probability": round(probability, 4),
         "risk_percentage": round(probability * 100, 2),
         "risk_level": risk_level,
-        "input_summary": data.dict()
+        "factor_breakdown": factor_breakdown,
+        "primary_driver": primary_driver,
+        "input_summary": input_dict
     }

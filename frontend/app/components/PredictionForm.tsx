@@ -6,6 +6,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { getPrediction, PredictionResult } from "../lib/api";
 import { getRiskColor } from "../lib/riskColors";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { FactorContribution } from "../lib/api";
 
 const sliderFields = [
   { key: "MonsoonIntensity", label: "Monsoon Intensity" },
@@ -17,6 +18,26 @@ const sliderFields = [
   { key: "Urbanization", label: "Urbanization Level" },
   { key: "ClimateChange", label: "Climate Change Impact" },
 ];
+const factorIcons: Record<string, string> = {
+  MonsoonIntensity: "🌧️",
+  Landslides: "🏔️",
+  Deforestation: "🌲",
+  DrainageSystems: "🌊",
+  DeterioratingInfrastructure: "🏗️",
+  RiverManagement: "🌊",
+  ClimateChange: "🌡️",
+  IneffectiveDisasterPreparedness: "⚠️",
+  DamsQuality: "🚧",
+  Urbanization: "🏙️",
+};
+
+function getFactorIcon(factor: string): string {
+  return factorIcons[factor] || "📊";
+}
+
+function formatFactorName(factor: string): string {
+  return factor.replace(/([A-Z])/g, " $1").trim();
+}
 
 // Default mid-values for the fields not exposed as sliders
 const defaultFactors: Record<string, number> = {
@@ -96,7 +117,7 @@ export default function PredictionForm() {
         )}
       </button>
 
-      <AnimatePresence>
+            <AnimatePresence>
         {result && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -122,16 +143,51 @@ export default function PredictionForm() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-slate-400 text-sm">Probability</div>
+                  <div className="text-slate-400 text-sm">Risk Score</div>
                   <div className="text-2xl font-bold text-white">
-                    {result.risk_percentage}%
+                    {result.risk_percentage}/100
                   </div>
                 </div>
+              </div>
+              <div className="text-slate-500 text-xs mt-3 italic">
+                Prototype estimate based on trained model — not a calibrated probability or official forecast.
+              </div>
+            </div>
+
+            <div className="mt-4 bg-[#0d1420] border border-slate-800 rounded-xl p-5">
+              <h4 className="text-white font-medium text-sm mb-4">
+                Why this location is {result.risk_level}
+              </h4>
+              <div className="space-y-2.5">
+                {result.factor_breakdown.map((item: FactorContribution, index: number) => (
+                  <motion.div
+                    key={item.factor}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="text-slate-300 flex items-center gap-2">
+                      <span>{getFactorIcon(item.factor)}</span>
+                      {formatFactorName(item.factor)}
+                    </span>
+                    <span className="text-blue-400 font-medium">
+                      +{item.contribution_percent}%
+                    </span>
+                  </motion.div>
+                ))}
+                <div className="border-t border-slate-800 pt-2.5 mt-2.5 flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Predicted Risk</span>
+                  <span className="text-white font-bold">{result.risk_percentage}%</span>
+                </div>
+              </div>
+              <div className="mt-3 text-xs text-slate-500">
+                Primary driver: <span className="text-slate-300">{formatFactorName(result.primary_driver)}</span>
               </div>
             </div>
           </motion.div>
         )}
-           </AnimatePresence>
+      </AnimatePresence>
 
       <div className="mt-6 pt-6 border-t border-slate-800">
         <h4 className="text-slate-300 text-sm font-medium mb-4">
