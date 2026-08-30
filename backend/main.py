@@ -77,13 +77,11 @@ def predict_flood(data: FloodInput):
     input_dict = data.dict()
     input_df = pd.DataFrame([input_dict])[feature_columns]
 
-    # Predict
     probability = float(model.predict(input_df)[0])
     probability = max(0.0, min(1.0, probability))
 
     risk_level = get_risk_level(probability)
 
-    # Calculate each factor's real contribution using the model's actual coefficients
     contributions = {}
     for i, feature in enumerate(feature_columns):
         coef = model.coef_[i]
@@ -92,7 +90,6 @@ def predict_flood(data: FloodInput):
 
     total_contribution = sum(contributions.values())
 
-    # Convert to percentage of total predicted risk, sorted highest first
     factor_breakdown = []
     if total_contribution > 0:
         for feature, contribution in sorted(contributions.items(), key=lambda x: x[1], reverse=True)[:5]:
@@ -112,6 +109,86 @@ def predict_flood(data: FloodInput):
         "primary_driver": primary_driver,
         "input_summary": input_dict
     }
+
+
+def rainfall_to_monsoon_intensity(rainfall_mm: float) -> float:
+    intensity = rainfall_mm / 10
+    return round(min(max(intensity, 0), 20), 1)
+
+
+@app.get("/live-weather")
+def get_live_weather(lat: float, lon: float):
+    try:
+        response = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "current": "precipitation,rain,temperature_2m",
+                "timezone": "auto",
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()["current"]
+        rainfall_mm = data.get("precipitation", 0)
+        return {
+            "source": "Open-Meteo (live)",
+            "rainfall_mm": rainfall_mm,
+            "temperature_c": data.get("temperature_2m"),
+            "derived_monsoon_intensity": rainfall_to_monsoon_intensity(rainfall_mm),
+            "fetched_at": data.get("time"),
+        }
+    except Exception as e:
+        return {"error": str(e), "source": "Open-Meteo (live)", "status": "unavailable"}
+
+
+@app.get("/historical-check")
+def historical_flood_check():
+    try:
+        response = requests.get(
+            "https://archive-api.open-meteo.com/v1/archive",
+            params={
+                "latitude": 31.0408,
+                "longitude": 78.7811,
+                "start_date": "2025-08-05",
+                "end_date": "2025-08-05",
+                "daily": "precipitation_sum",
+                "timezone": "auto",
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+        actual_rainfall_mm = data["daily"]["precipitation_sum"][0]
+        derived_intensity = rainfall_to_monsoon_intensity(actual_rainfall_mm)
+
+        test_input = {
+            "MonsoonIntensity": derived_intensity,
+            "TopographyDrainage": 4, "RiverManagement": 4, "Deforestation": 13,
+            "Urbanization": 4, "ClimateChange": 14, "DamsQuality": 4, "Siltation": 12,
+            "AgriculturalPractices": 6, "Encroachments": 5,
+            "IneffectiveDisasterPreparedness": 13, "DrainageSystems": 4,
+            "CoastalVulnerability": 1, "Landslides": 16, "Watersheds": 8,
+            "DeterioratingInfrastructure": 12, "PopulationScore": 4,
+            "WetlandLoss": 7, "InadequatePlanning": 12, "PoliticalFactors": 7,
+        }
+        input_df = pd.DataFrame([test_input])[feature_columns]
+        probability = max(0.0, min(1.0, float(model.predict(input_df)[0])))
+
+        return {
+            "event": "2025 Uttarakhand Flash Flood — Dharali",
+            "actual_event_date": "2025-08-05",
+            "actual_rainfall_mm": actual_rainfall_mm,
+            "derived_monsoon_intensity": derived_intensity,
+            "model_predicted_risk_percentage": round(probability * 100, 2),
+            "model_predicted_severity": get_risk_level(probability),
+            "note": "Rainfall is real historical data (Open-Meteo archive). Other 19 factors are estimated regional values, not verified historical records.",
+        }
+    except Exception as e:
+        return {"error": str(e), "status": "unavailable"}
+
+
 @app.post("/notify")
 def notify_authorities(data: NotifyRequest):
     api_key = os.environ.get("RESEND_API_KEY")

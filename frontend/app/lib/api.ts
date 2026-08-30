@@ -25,3 +25,17 @@ export async function notifyAuthorities(recipientEmail: string, stations: any[])
   });
   return response.data;
 }
+export interface HistoricalCheckResult {
+  event: string;
+  actual_event_date: string;
+  actual_rainfall_mm: number;
+  derived_monsoon_intensity: number;
+  model_predicted_risk_percentage: number;
+  model_predicted_severity: string;
+  note: string;
+}
+
+export async function getHistoricalCheck(): Promise<HistoricalCheckResult> {
+  const response = await axios.get(`${API_BASE_URL}/historical-check`);
+  return response.data;
+}

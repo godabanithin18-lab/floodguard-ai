@@ -10,6 +10,7 @@ import { getPrediction, notifyAuthorities } from "../lib/api";
 import { getRiskColor } from "../lib/riskColors";
 import PredictionForm from "../components/PredictionForm";
 import { AlertTriangle as AlertIcon } from "lucide-react";
+import HistoricalValidation from "../components/HistoricalValidation";
 
 // Leaflet map must load client-side only
 const FloodMap = dynamic(() => import("../components/FloodMap"), {
@@ -238,6 +239,9 @@ const handleNotify = async () => {
       </div>
       <div className="max-w-7xl mx-auto mt-6">
         <PredictionForm />
+      </div>
+      <div className="max-w-7xl mx-auto mt-6">
+        <HistoricalValidation />
       </div>
     </main>
   );
