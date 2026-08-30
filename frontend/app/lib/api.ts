@@ -39,3 +39,31 @@ export async function getHistoricalCheck(): Promise<HistoricalCheckResult> {
   const response = await axios.get(`${API_BASE_URL}/historical-check`);
   return response.data;
 }
+export interface LiveWeatherResult {
+  source: string;
+  rainfall_mm: number;
+  temperature_c: number;
+  derived_monsoon_intensity: number;
+  fetched_at: string;
+}
+
+export async function getLiveWeather(lat: number, lon: number): Promise<LiveWeatherResult> {
+  const response = await axios.get(`${API_BASE_URL}/live-weather`, {
+    params: { lat, lon },
+  });
+  return response.data;
+}
+
+export async function getLivePrediction(
+  lat: number,
+  lon: number,
+  otherFactors: Record<string, number>
+): Promise<{ weather: LiveWeatherResult; prediction: PredictionResult }> {
+  const weather = await getLiveWeather(lat, lon);
+  const combinedFactors = {
+    ...otherFactors,
+    MonsoonIntensity: weather.derived_monsoon_intensity,
+  };
+  const prediction = await getPrediction(combinedFactors);
+  return { weather, prediction };
+} 
