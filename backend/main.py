@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from collections import deque
 import joblib
 import pandas as pd
 import os
@@ -54,7 +55,18 @@ class FloodInput(BaseModel):
 class NotifyRequest(BaseModel):
     recipient_email: str
     stations: list[dict]
+audit_log = deque(maxlen=50)
 
+def log_audit(event_type: str, details: dict):
+    audit_log.appendleft({
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "event": event_type,
+        "details": details,
+    })
+
+@app.get("/audit-log")
+def get_audit_log():
+    return {"count": len(audit_log), "entries": list(audit_log)}
 
 def get_risk_level(probability: float) -> str:
     if probability < 0.35:
@@ -100,6 +112,11 @@ def predict_flood(data: FloodInput):
             })
 
     primary_driver = factor_breakdown[0]["factor"] if factor_breakdown else None
+    log_audit("prediction", {
+        "risk_percentage": round(probability * 100, 2),
+        "risk_level": risk_level,
+        "primary_driver": primary_driver,
+    })
 
     return {
         "flood_probability": round(probability, 4),
@@ -201,7 +218,93 @@ def historical_flood_check():
     except Exception as e:
         return {"error": str(e), "status": "unavailable"}
 
+HISTORICAL_EVENTS = [
+    {
+        "event": "2025 Uttarakhand Flash Flood — Dharali",
+        "date": "2025-08-05",
+        "lat": 31.0408, "lon": 78.7811,
+        "vulnerability": {
+            "TopographyDrainage": 4, "RiverManagement": 4, "Deforestation": 13,
+            "Urbanization": 4, "ClimateChange": 14, "DamsQuality": 4, "Siltation": 12,
+            "AgriculturalPractices": 6, "Encroachments": 5,
+            "IneffectiveDisasterPreparedness": 13, "DrainageSystems": 4,
+            "CoastalVulnerability": 1, "Landslides": 16, "Watersheds": 8,
+            "DeterioratingInfrastructure": 12, "PopulationScore": 4,
+            "WetlandLoss": 7, "InadequatePlanning": 12, "PoliticalFactors": 7,
+        },
+    },
+    {
+        "event": "2013 Uttarakhand Floods — Kedarnath",
+        "date": "2013-06-17",
+        "lat": 30.7346, "lon": 79.0669,
+        "vulnerability": {
+            "TopographyDrainage": 3, "RiverManagement": 3, "Deforestation": 11,
+            "Urbanization": 5, "ClimateChange": 12, "DamsQuality": 3, "Siltation": 13,
+            "AgriculturalPractices": 5, "Encroachments": 6,
+            "IneffectiveDisasterPreparedness": 15, "DrainageSystems": 3,
+            "CoastalVulnerability": 1, "Landslides": 18, "Watersheds": 9,
+            "DeterioratingInfrastructure": 13, "PopulationScore": 8,
+            "WetlandLoss": 6, "InadequatePlanning": 14, "PoliticalFactors": 6,
+        },
+    },
+    {
+        "event": "2018 Kerala Floods — Wayanad",
+        "date": "2018-08-16",
+        "lat": 11.6854, "lon": 76.1320,
+        "vulnerability": {
+            "TopographyDrainage": 5, "RiverManagement": 5, "Deforestation": 12,
+            "Urbanization": 6, "ClimateChange": 13, "DamsQuality": 6, "Siltation": 10,
+            "AgriculturalPractices": 8, "Encroachments": 6,
+            "IneffectiveDisasterPreparedness": 11, "DrainageSystems": 5,
+            "CoastalVulnerability": 4, "Landslides": 14, "Watersheds": 7,
+            "DeterioratingInfrastructure": 9, "PopulationScore": 7,
+            "WetlandLoss": 8, "InadequatePlanning": 10, "PoliticalFactors": 6,
+        },
+    },
+]
 
+
+@app.get("/historical-validation-set")
+def historical_validation_set():
+    results = []
+    for ev in HISTORICAL_EVENTS:
+        try:
+            response = requests.get(
+                "https://archive-api.open-meteo.com/v1/archive",
+                params={
+                    "latitude": ev["lat"], "longitude": ev["lon"],
+                    "start_date": ev["date"], "end_date": ev["date"],
+                    "daily": "precipitation_sum", "timezone": "auto",
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            data = response.json()
+            actual_rainfall = data["daily"]["precipitation_sum"][0]
+            derived_intensity = rainfall_to_monsoon_intensity(actual_rainfall)
+
+            test_input = {"MonsoonIntensity": derived_intensity, **ev["vulnerability"]}
+            input_df = pd.DataFrame([test_input])[feature_columns]
+            probability = max(0.0, min(1.0, float(model.predict(input_df)[0])))
+
+            results.append({
+                "event": ev["event"],
+                "date": ev["date"],
+                "actual_rainfall_mm": actual_rainfall,
+                "derived_monsoon_intensity": derived_intensity,
+                "predicted_risk_percentage": round(probability * 100, 2),
+                "predicted_severity": get_risk_level(probability),
+            })
+        except Exception as e:
+            results.append({"event": ev["event"], "date": ev["date"], "error": str(e)})
+
+    flagged = sum(1 for r in results if r.get("predicted_severity") in ["Severe", "High"])
+    return {
+        "events_tested": len(HISTORICAL_EVENTS),
+        "flagged_severe_or_high": flagged,
+        "results": results,
+        "note": "Rainfall is real historical data (Open-Meteo archive) for each event's actual date and location. Other 19 factors are estimated regional vulnerability values, not verified historical records.",
+    }
 @app.post("/notify")
 def notify_authorities(data: NotifyRequest):
     api_key = os.environ.get("RESEND_API_KEY")
@@ -249,6 +352,10 @@ def notify_authorities(data: NotifyRequest):
             timeout=10,
         )
         response.raise_for_status()
+        log_audit("alert_dispatched", {
+            "recipient": data.recipient_email,
+            "stations": [s["name"] for s in data.stations],
+        })
         return {
             "status": "sent",
             "recipient": data.recipient_email,
