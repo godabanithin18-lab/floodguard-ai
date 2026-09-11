@@ -4,6 +4,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Live-brightgreen" alt="status" />
   <img src="https://img.shields.io/badge/Model-Linear%20Regression-blue" alt="model" />
+  <img src="https://img.shields.io/badge/Validated-3%20Real%20Events-purple" alt="validation" />
   <img src="https://img.shields.io/badge/Frontend-Next.js%2016-black" alt="nextjs" />
   <img src="https://img.shields.io/badge/Backend-FastAPI-009688" alt="fastapi" />
   <img src="https://img.shields.io/badge/Live%20Weather-Open--Meteo-06b6d4" alt="weather" />
@@ -20,7 +21,7 @@
 
 ## 🎯 What FloodGuard AI Actually Is
 
-FloodGuard AI is **not** "a model that predicts floods." It is an explainable flash-flood intelligence platform that combines environmental observations, live weather integration, localized risk estimation, historical event validation, and transparent decision support — built for the hill regions of Uttarakhand and Himachal Pradesh, where flash floods routinely strike with only hours of warning.
+FloodGuard AI is **not** "a model that predicts floods." It is an explainable flash-flood intelligence platform that combines environmental observations, live weather integration, localized risk estimation, multi-event historical validation, and transparent, auditable decision support — built for the hill regions of Uttarakhand and Himachal Pradesh, where flash floods routinely strike with only hours of warning.
 
 **SIH Problem Statement:** SIH26192 — Flash Flood Prediction System for Hilly Regions using Multi-Source Data *(Ministry of Home Affairs)*
 
@@ -41,16 +42,16 @@ FloodGuard AI is **not** "a model that predicts floods." It is an explainable fl
         Explain Why — Factor Contribution Breakdown
                     │
                     ▼
-   Check Against a Real Event — Historical Validation
+   Check Against Real Events — Multi-Event Historical Validation
                     │
                     ▼
         Risk Score Engine (Low / Moderate / High / Severe)
                     │
                     ▼
-          Alert & Decision Support (Real Email Dispatch)
+     Alert & Decision Support (Real Email Dispatch + Audit Log)
 ```
 
-Every arrow above is a real, working checkpoint in the deployed system — not aspirational. The model doesn't just output a number; the pipeline explains it, checks it against a genuine historical disaster, and only then surfaces it as a decision-support signal.
+Every arrow above is a real, working checkpoint in the deployed system.
 
 ---
 
@@ -59,46 +60,86 @@ Every arrow above is a real, working checkpoint in the deployed system — not a
 | Feature | Description |
 |---|---|
 | 🗺️ **Live Risk Map** | Color-coded severity across 6 real hill-region monitoring stations |
-| 🌦️ **Live Weather Integration** | Real current rainfall & temperature from Open-Meteo, feeding every prediction |
-| 🕰️ **Real-World Historical Validation** | Model tested against the actual Aug 2025 Dharali flash flood — correctly classifies it Severe |
-| 🧠 **AI Decision Explanation** | Mathematically real, factor-by-factor breakdown of every prediction — not an approximation |
+| 🌦️ **Live Weather Integration** | Real current rainfall & temperature from Open-Meteo, feeding every prediction — with a stale-data badge if a reading is more than 30 minutes old |
+| 🕰️ **Multi-Event Historical Validation** | Model tested against **3 real Indian flood disasters** — all correctly flagged High/Severe |
+| 🧠 **AI Decision Explanation** | Mathematically real, factor-by-factor breakdown of every prediction |
+| 🧾 **Model Card** | Transparent, standard summary of model type, training data, performance, and known limitations |
+| 🪪 **Prediction Audit Trail** | Every prediction and alert dispatch is logged and traceable via `/audit-log` |
 | 🎛️ **"Try It Yourself"** | Live sliders simulate any scenario and get an instant, explainable prediction |
-| 🚨 **Automated Alert Banner** | Triggers automatically the moment any station crosses into Severe |
+| 🚨 **Automated Alert Banner** | Triggers automatically when any station crosses into Severe |
 | 📧 **Real Email Notifications** | One click sends an actual, delivered email alert to disaster-management contacts |
-| 📊 **Data Visualization** | Live-updating factor charts and ranked station risk levels |
 
 ---
 
 ## 🧾 Model Card — FloodGuard AI Risk Model
 
-*A standard, transparent summary of what this model is, how it was validated, and where its limits are — so anyone reviewing this project knows exactly what they're looking at.*
-
 | Field | Detail |
 |---|---|
 | **Model type** | Linear Regression |
 | **Training data** | 50,000 synthetic samples, 20 numeric risk factors (Kaggle `naiyakhalid/flood-prediction-dataset`) |
-| **Model selection process** | Benchmarked against Random Forest and Gradient Boosting on identical 80/20 splits before selection |
-| **Validation method** | Held-out test split (10,000 samples) + real historical event backtest (Dharali, Aug 5 2025) |
+| **Model selection process** | Benchmarked against Random Forest and Gradient Boosting before selection |
+| **Validation method** | Held-out test split (10,000 samples) + **3 real historical event backtests** |
 | **Performance (synthetic test set)** | R² = 1.0000 · MAE = 0.00000 · RMSE = 0.00000 |
-| **Performance (real historical event)** | Correctly classified the real Aug 5, 2025 Dharali rainfall as 75.95% risk — Severe |
-| **What's genuinely live** | Rainfall/temperature per station, pulled in real time from Open-Meteo |
-| **Known limitations** | 19 of 20 input factors are expert-estimated regional values, not live sensor data; training data is synthetic, not collected from verified real flood outcomes; validated against one real historical event, not a full validation set |
+| **Performance (real historical events)** | 3 of 3 real disasters correctly classified High/Severe — Dharali 2025 (75.95%), Kedarnath 2013 (84.85%), Kerala/Wayanad 2018 (77.85%) |
+| **What's genuinely live** | Rainfall/temperature per station (Open-Meteo), with freshness validation |
+| **Known limitations** | 19 of 20 input factors are expert-estimated regional values, not live sensor data; training data is synthetic; validated against 3 real events, not a comprehensive validation study |
 | **Intended use** | Decision-support prototype for disaster-management teams — **not** a fully validated, standalone operational early-warning system |
-| **Last validated** | See repository commit history for the current date |
-
-> This Model Card exists specifically so this project is never mistaken for more than it honestly is. The gap between "working prototype" and "operational system" is real historical/sensor data access — an institutional step, not an engineering one.
+| **Traceability** | Every prediction and alert is logged with a timestamp via the audit trail (`/audit-log`) |
 
 ---
 
-## 🧠 ML Methodology
+## 🕰️ Multi-Event Historical Validation
 
-| Step | Detail |
-|---|---|
-| **Input features** | 20 numeric risk factors — MonsoonIntensity, TopographyDrainage, RiverManagement, Deforestation, Urbanization, ClimateChange, DamsQuality, Siltation, AgriculturalPractices, Encroachments, IneffectiveDisasterPreparedness, DrainageSystems, CoastalVulnerability, Landslides, Watersheds, DeterioratingInfrastructure, PopulationScore, WetlandLoss, InadequatePlanning, PoliticalFactors |
-| **Target variable** | `FloodProbability` — continuous value between 0 and 1 |
-| **Preprocessing** | Dataset arrived fully clean (0 missing values, all numeric) |
-| **Train/test methodology** | 80/20 split, `random_state=42` — 40,000 training / 10,000 test samples |
-| **Prediction → category** | Raw probability converted to a 0–100 risk score, bucketed: **&lt;35 Low · 35–55 Moderate · 55–70 High · 70+ Severe** |
+The `/historical-validation-set` endpoint tests the model against **3 real Indian flood disasters**, each using genuine archived rainfall for that event's actual date and location:
+
+| Event | Date | Real Rainfall | Predicted Risk | Result |
+|---|---|---|---|---|
+| Dharali Flash Flood | Aug 5, 2025 | 19.1 mm | 75.95% | ✅ Severe |
+| Kedarnath Floods | Jun 17, 2013 | 157.2 mm | 84.85% | ✅ Severe |
+| Kerala Floods (Wayanad) | Aug 16, 2018 | 36.9 mm | 77.85% | ✅ Severe |
+
+**3 of 3 real disasters correctly flagged High/Severe.** Notably, predicted risk stays in a similar high range even though real rainfall varies by 8x across events (19.1mm to 157.2mm) — evidence the model's regional vulnerability factors are doing real work, not just echoing rainfall alone.
+
+**Honest framing:** this is a small, real validation set — not a comprehensive study. Each event combines genuine historical rainfall with expert-estimated (not verified historical) vulnerability factors.
+
+---
+
+## 🌦️ Live Weather Integration & Data Freshness
+
+Every station's risk score factors in real, current weather from Open-Meteo, converted into the model's `MonsoonIntensity` scale. The dashboard's **Live Conditions** section shows a live timestamp per station — and flags readings older than 30 minutes with a **"STALE"** badge instead of silently presenting outdated data as current.
+
+---
+
+## 🪪 Prediction Audit Trail
+
+Every call to `/predict` and every alert dispatched via `/notify` is logged with a timestamp, accessible via `GET /audit-log`. This makes every risk score and every alert traceable — a basic but real trust and accountability feature, not just a black-box output.
+
+---
+
+## 🔍 Explainability
+
+Every prediction includes a live factor breakdown — e.g. Monsoon Intensity +9.0%, Landslides +8.0%. Computed as `(coefficient × input value)`, normalized to a percentage — derived directly from the model's real learned weights.
+
+---
+
+## 📧 Authority Notification System
+
+When any station crosses into Severe, an alert banner appears automatically. **"Notify Authorities"** sends a real, formatted email via the **Resend** API — with genuine delivery status, logged in the audit trail.
+
+---
+
+## 📈 Model Performance (Synthetic Test Set)
+
+| Model | R² Score | MAE | RMSE |
+|---|:---:|:---:|:---:|
+| **Linear Regression** ✅ | **1.0000** | **0.00000** | **0.00000** |
+| Gradient Boosting | 0.9195 | 0.01111 | 0.01416 |
+| Random Forest | 0.7110 | 0.02122 | 0.02683 |
+
+### Why Linear Regression?
+Tested against Random Forest and Gradient Boosting rather than assumed. Its coefficients showed every one of the 20 factors carries an identical weight (≈0.005) — proof the target variable is a genuinely linear formula, giving full explainability as a direct consequence.
+
+> ⚠️ A perfect R² means the model recovered a synthetic dataset's true formula — real-world accuracy is earned separately, through the multi-event historical validation above.
 
 ---
 
@@ -108,56 +149,9 @@ Every arrow above is a real, working checkpoint in the deployed system — not a
 |---|---|
 | **Source** | Public Kaggle dataset — `naiyakhalid/flood-prediction-dataset` |
 | **Records** | 50,000 · **Features** | 20 numeric + 1 target |
-| **Data nature** | ⚠️ Synthetic — engineered by the dataset's authors, disclosed as such in their own documentation |
+| **Data nature** | ⚠️ Synthetic |
 
-**Monitoring stations** use **real GPS coordinates** of actual hill towns — Dharali, Uttarkashi, Manali, Kullu Town, Shimla, Rishikesh — including two genuine 2025 flood-affected regions. Their risk-factor *values* are manually assigned estimates, not live sensor feeds, because that data lives in government GIS systems with no free public API.
-
-**What's genuinely live vs. estimated:**
-- ✅ Rainfall / MonsoonIntensity — real, live, Open-Meteo, every load
-- ⚠️ The remaining 19 factors — expert-estimated, static
-
----
-
-## 📈 Model Performance
-
-| Model | R² Score | MAE | RMSE |
-|---|:---:|:---:|:---:|
-| **Linear Regression** ✅ | **1.0000** | **0.00000** | **0.00000** |
-| Gradient Boosting | 0.9195 | 0.01111 | 0.01416 |
-| Random Forest | 0.7110 | 0.02122 | 0.02683 |
-
-### Why Linear Regression?
-We tested it against Random Forest and Gradient Boosting rather than assuming it. Inspecting its fitted coefficients showed every one of the 20 factors carries an identical weight (≈0.005) — proof the target variable is a genuinely linear, equal-weighted formula. This gives full explainability as a direct mathematical consequence, not a bolted-on feature.
-
-> ⚠️ A perfect R² here means the model correctly recovered a synthetic dataset's true formula — not a claim of validated real-world accuracy. That claim is earned separately, through the historical validation below.
-
----
-
-## 🌦️ Live Weather Integration
-
-Every station's risk score factors in real, current weather. On each dashboard load, the frontend calls `/live-weather?lat={lat}&lon={lon}` per station, pulling today's actual rainfall and temperature from Open-Meteo (free, no key required). That real rainfall is converted into the model's `MonsoonIntensity` scale and combined with the station's other 19 factors before prediction — visible with a live timestamp in the dashboard's **Live Conditions** section.
-
----
-
-## 🕰️ Real-World Historical Validation
-
-The `/historical-check` endpoint fetches the actual historical rainfall for **August 5, 2025** — the real Dharali flash flood date — from Open-Meteo's archive API, combines it with Dharali's known vulnerability factors, and runs it through the model.
-
-**Result:** the model correctly classifies that real day as **75.95% risk — Severe.**
-
-**Honest framing:** this validates the model responds sensibly to real rainfall combined with known regional vulnerability. It is not a claim that rainfall alone predicted the disaster — real flash floods often involve hyper-local dynamics daily-average data can understate. One real input tested against one real outcome — a genuine but limited validation, honestly scoped.
-
----
-
-## 🔍 Explainability
-
-Every prediction includes a live factor breakdown — e.g. Monsoon Intensity +9.0%, Landslides +8.0%, Deforestation +7.5%. This is computed as `(coefficient × input value)`, normalized to a percentage — derived directly from the model's real learned weights, not a heuristic layered on top.
-
----
-
-## 📧 Authority Notification System
-
-When any station crosses into Severe, an alert banner appears automatically. A **"Notify Authorities"** button triggers `POST /notify`, which composes a formatted HTML email listing every severe station and sends it via the **Resend** API — with real delivery status, not a fake confirmation animation.
+**Monitoring stations** use real GPS coordinates of actual hill towns. Their risk-factor *values* are manually assigned estimates, not live sensor feeds.
 
 ---
 
@@ -165,7 +159,7 @@ When any station crosses into Severe, an alert banner appears automatically. A *
 
 | Station | District | Coordinates | Notes |
 |---|---|---|---|
-| Dharali | Uttarkashi, Uttarakhand | 31.0408, 78.7811 | Real 2025 flash flood site — used in historical validation |
+| Dharali | Uttarkashi, Uttarakhand | 31.0408, 78.7811 | Real 2025 flash flood site |
 | Uttarkashi | Uttarkashi, Uttarakhand | 30.7268, 78.4354 | Real 2025 flash flood affected region |
 | Manali | Kullu, Himachal Pradesh | 32.2432, 77.1892 | — |
 | Kullu Town | Kullu, Himachal Pradesh | 31.9576, 77.1095 | — |
@@ -182,10 +176,9 @@ cd backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-$env:RESEND_API_KEY="your_resend_api_key_here"   # required for email alerts
+$env:RESEND_API_KEY="your_resend_api_key_here"
 uvicorn main:app --reload
 ```
-Runs at `http://127.0.0.1:8000` · Docs at `/docs` · No key needed for weather endpoints
 
 ### Frontend
 ```bash
@@ -193,32 +186,31 @@ cd frontend
 npm install
 npm run dev
 ```
-Runs at `http://localhost:3000`
 
 ---
 
 ## 🗺️ Roadmap
 
-**Near-term (engineering, low risk):**
-- [ ] Multi-event historical validation (beyond the single Dharali backtest)
-- [ ] Data-freshness / stale-data safety indicators on live readings
-- [ ] Prediction audit trail (traceable log of every risk score generated)
+**Near-term:**
+- [x] Multi-event historical validation
+- [x] Data-freshness safety indicators
+- [x] Prediction audit trail
 
-**Medium-term (needs institutional data access):**
-- [ ] Live IMD / CWC integration for the remaining 19 terrain/infrastructure factors
-- [ ] Real authority contact directory (currently one configured recipient)
-- [ ] SMS / WhatsApp alert channel alongside email
+**Medium-term:**
+- [ ] Live IMD / CWC integration for the remaining 19 factors
+- [ ] Real authority contact directory
+- [ ] SMS / WhatsApp alert channel
 
-**Longer-term (larger builds):**
-- [ ] Emergency command-center interface for district disaster-management teams
+**Longer-term:**
+- [ ] Emergency command-center interface
 - [ ] Field-operator mobile view
-- [ ] Historical risk-trend replay and geographic backtesting across more regions
+- [ ] Broader geographic backtesting
 
 ---
 
 ## 👤 Team
 
-**Quantum coders**
+**Developes**
 Built for Smart India Hackathon 2026
 
 ---
