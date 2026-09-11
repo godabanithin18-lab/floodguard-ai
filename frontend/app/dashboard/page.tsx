@@ -12,6 +12,7 @@ import PredictionForm from "../components/PredictionForm";
 import { AlertTriangle as AlertIcon } from "lucide-react";
 import HistoricalValidation from "../components/HistoricalValidation";
 import LiveConditions from "../components/LiveConditions";
+import ModelCard from "../components/ModelCard";
 
 // Leaflet map must load client-side only
 const FloodMap = dynamic(() => import("../components/FloodMap"), {
@@ -246,6 +247,9 @@ const handleNotify = async () => {
       </div>
       <div className="max-w-7xl mx-auto mt-6">
         <HistoricalValidation />
+      </div>
+      <div className="max-w-7xl mx-auto mt-6">
+        <ModelCard />
       </div>
     </main>
   );
