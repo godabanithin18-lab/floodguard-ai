@@ -6,6 +6,11 @@ import { CloudRain, Thermometer, RadioTower } from "lucide-react";
 import { stations } from "../data/stations";
 import { getLivePrediction } from "../lib/api";
 import { getRiskColor } from "../lib/riskColors";
+function isStale(fetchedAt: string): boolean {
+  const fetchedTime = new Date(fetchedAt).getTime();
+  const now = Date.now();
+  return now - fetchedTime > 30 * 60 * 1000; // older than 30 minutes
+}
 
 interface StationLiveData {
   stationName: string;
@@ -100,9 +105,15 @@ export default function LiveConditions() {
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="text-white font-medium text-sm">{station.stationName}</div>
-                <div className="flex items-center gap-1 text-green-400 text-[10px] font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  LIVE
+                                <div
+                  className="flex items-center gap-1 text-[10px] font-medium"
+                  style={{ color: isStale(station.fetched_at) ? "#f59e0b" : "#4ade80" }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ backgroundColor: isStale(station.fetched_at) ? "#f59e0b" : "#4ade80" }}
+                  />
+                  {isStale(station.fetched_at) ? "STALE" : "LIVE"}
                 </div>
               </div>
               <div className="text-slate-500 text-xs mb-3">{station.district}</div>

@@ -60,10 +60,36 @@ export async function getLivePrediction(
   otherFactors: Record<string, number>
 ): Promise<{ weather: LiveWeatherResult; prediction: PredictionResult }> {
   const weather = await getLiveWeather(lat, lon);
+
+  const safeMonsoonIntensity =
+    typeof weather.derived_monsoon_intensity === "number"
+      ? weather.derived_monsoon_intensity
+      : (otherFactors.MonsoonIntensity ?? 8);
+
   const combinedFactors = {
     ...otherFactors,
-    MonsoonIntensity: weather.derived_monsoon_intensity,
+    MonsoonIntensity: safeMonsoonIntensity,
   };
   const prediction = await getPrediction(combinedFactors);
   return { weather, prediction };
-} 
+}
+export interface ValidationEvent {
+  event: string;
+  date: string;
+  actual_rainfall_mm: number;
+  derived_monsoon_intensity: number;
+  predicted_risk_percentage: number;
+  predicted_severity: string;
+}
+
+export interface ValidationSetResult {
+  events_tested: number;
+  flagged_severe_or_high: number;
+  results: ValidationEvent[];
+  note: string;
+}
+
+export async function getValidationSet(): Promise<ValidationSetResult> {
+  const response = await axios.get(`${API_BASE_URL}/historical-validation-set`);
+  return response.data;
+}

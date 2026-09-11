@@ -17,6 +17,7 @@ export default function FloodMap({ stations }: { stations: StationWithPrediction
   return (
     <div className="dark-map-wrapper h-full w-full">
       <MapContainer
+        key="floodguard-map"
         center={[30.9, 78.5]}
         zoom={8}
         style={{ height: "100%", width: "100%", borderRadius: "16px" }}
