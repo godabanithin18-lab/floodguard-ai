@@ -78,7 +78,48 @@ def get_risk_level(probability: float) -> str:
     else:
         return "Severe"
 
+def get_recommended_actions(risk_level: str) -> list[str]:
+    actions_map = {
+        "Low": [
+            "Continue routine monitoring",
+            "No immediate action required",
+        ],
+        "Moderate": [
+            "Increase observation frequency",
+            "Notify local monitoring station",
+            "Review drainage and preparedness status",
+        ],
+        "High": [
+            "Alert district disaster-management authority",
+            "Monitor downstream settlements",
+            "Increase observation frequency",
+            "Pre-position emergency response resources",
+        ],
+        "Severe": [
+            "Alert district disaster-management authority",
+            "Monitor downstream settlements",
+            "Prepare evacuation routes",
+            "Increase observation frequency to continuous",
+            "Issue public warning if threshold persists",
+        ],
+    }
+    return actions_map.get(risk_level, [])
 
+
+def get_confidence_assessment(input_dict: dict) -> dict:
+    extreme_count = sum(1 for v in input_dict.values() if v <= 1 or v >= 19)
+    if extreme_count >= 5:
+        input_confidence = "Low — multiple factors at extreme boundary values"
+    elif extreme_count >= 2:
+        input_confidence = "Moderate — some factors at boundary values"
+    else:
+        input_confidence = "High — inputs within typical operating range"
+
+    return {
+        "input_range_confidence": input_confidence,
+        "extreme_factor_count": extreme_count,
+        "note": "Reflects how typical the input values are, not a fitted statistical margin of error — the model's test-set residual error is effectively zero by construction (see Model Card).",
+    }
 @app.get("/")
 def root():
     return {"message": "Flash Flood Prediction API is running", "status": "healthy"}
@@ -124,7 +165,9 @@ def predict_flood(data: FloodInput):
         "risk_level": risk_level,
         "factor_breakdown": factor_breakdown,
         "primary_driver": primary_driver,
-        "input_summary": input_dict
+        "input_summary": input_dict,
+        "recommended_actions": get_recommended_actions(risk_level),
+        "confidence_assessment": get_confidence_assessment(input_dict)
     }
 @app.get("/model-transparency")
 def model_transparency():
@@ -219,48 +262,30 @@ def historical_flood_check():
         return {"error": str(e), "status": "unavailable"}
 
 HISTORICAL_EVENTS = [
-    {
-        "event": "2025 Uttarakhand Flash Flood — Dharali",
-        "date": "2025-08-05",
-        "lat": 31.0408, "lon": 78.7811,
-        "vulnerability": {
-            "TopographyDrainage": 4, "RiverManagement": 4, "Deforestation": 13,
-            "Urbanization": 4, "ClimateChange": 14, "DamsQuality": 4, "Siltation": 12,
-            "AgriculturalPractices": 6, "Encroachments": 5,
-            "IneffectiveDisasterPreparedness": 13, "DrainageSystems": 4,
-            "CoastalVulnerability": 1, "Landslides": 16, "Watersheds": 8,
-            "DeterioratingInfrastructure": 12, "PopulationScore": 4,
-            "WetlandLoss": 7, "InadequatePlanning": 12, "PoliticalFactors": 7,
-        },
-    },
-    {
-        "event": "2013 Uttarakhand Floods — Kedarnath",
-        "date": "2013-06-17",
-        "lat": 30.7346, "lon": 79.0669,
-        "vulnerability": {
-            "TopographyDrainage": 3, "RiverManagement": 3, "Deforestation": 11,
-            "Urbanization": 5, "ClimateChange": 12, "DamsQuality": 3, "Siltation": 13,
-            "AgriculturalPractices": 5, "Encroachments": 6,
-            "IneffectiveDisasterPreparedness": 15, "DrainageSystems": 3,
-            "CoastalVulnerability": 1, "Landslides": 18, "Watersheds": 9,
-            "DeterioratingInfrastructure": 13, "PopulationScore": 8,
-            "WetlandLoss": 6, "InadequatePlanning": 14, "PoliticalFactors": 6,
-        },
-    },
-    {
-        "event": "2018 Kerala Floods — Wayanad",
-        "date": "2018-08-16",
-        "lat": 11.6854, "lon": 76.1320,
-        "vulnerability": {
-            "TopographyDrainage": 5, "RiverManagement": 5, "Deforestation": 12,
-            "Urbanization": 6, "ClimateChange": 13, "DamsQuality": 6, "Siltation": 10,
-            "AgriculturalPractices": 8, "Encroachments": 6,
-            "IneffectiveDisasterPreparedness": 11, "DrainageSystems": 5,
-            "CoastalVulnerability": 4, "Landslides": 14, "Watersheds": 7,
-            "DeterioratingInfrastructure": 9, "PopulationScore": 7,
-            "WetlandLoss": 8, "InadequatePlanning": 10, "PoliticalFactors": 6,
-        },
-    },
+    {"event": "Dharali Flash Flood, Uttarakhand", "date": "2025-08-05", "lat": 31.0408, "lon": 78.7811, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 4, "RiverManagement": 4, "Deforestation": 13, "Urbanization": 4, "ClimateChange": 14, "DamsQuality": 4, "Siltation": 12, "AgriculturalPractices": 6, "Encroachments": 5, "IneffectiveDisasterPreparedness": 13, "DrainageSystems": 4, "CoastalVulnerability": 1, "Landslides": 16, "Watersheds": 8, "DeterioratingInfrastructure": 12, "PopulationScore": 4, "WetlandLoss": 7, "InadequatePlanning": 12, "PoliticalFactors": 7}},
+    {"event": "Kedarnath Floods, Uttarakhand", "date": "2013-06-17", "lat": 30.7346, "lon": 79.0669, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 3, "RiverManagement": 3, "Deforestation": 11, "Urbanization": 5, "ClimateChange": 12, "DamsQuality": 3, "Siltation": 13, "AgriculturalPractices": 5, "Encroachments": 6, "IneffectiveDisasterPreparedness": 15, "DrainageSystems": 3, "CoastalVulnerability": 1, "Landslides": 18, "Watersheds": 9, "DeterioratingInfrastructure": 13, "PopulationScore": 8, "WetlandLoss": 6, "InadequatePlanning": 14, "PoliticalFactors": 6}},
+    {"event": "Wayanad Floods, Kerala", "date": "2018-08-16", "lat": 11.6854, "lon": 76.1320, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 5, "RiverManagement": 5, "Deforestation": 12, "Urbanization": 6, "ClimateChange": 13, "DamsQuality": 6, "Siltation": 10, "AgriculturalPractices": 8, "Encroachments": 6, "IneffectiveDisasterPreparedness": 11, "DrainageSystems": 5, "CoastalVulnerability": 4, "Landslides": 14, "Watersheds": 7, "DeterioratingInfrastructure": 9, "PopulationScore": 7, "WetlandLoss": 8, "InadequatePlanning": 10, "PoliticalFactors": 6}},
+    {"event": "Chennai Floods, Tamil Nadu", "date": "2015-12-02", "lat": 13.0827, "lon": 80.2707, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 6, "RiverManagement": 6, "Deforestation": 5, "Urbanization": 15, "ClimateChange": 11, "DamsQuality": 7, "Siltation": 9, "AgriculturalPractices": 4, "Encroachments": 14, "IneffectiveDisasterPreparedness": 12, "DrainageSystems": 15, "CoastalVulnerability": 12, "Landslides": 1, "Watersheds": 6, "DeterioratingInfrastructure": 11, "PopulationScore": 16, "WetlandLoss": 13, "InadequatePlanning": 13, "PoliticalFactors": 8}},
+    {"event": "Mumbai Deluge, Maharashtra", "date": "2005-07-26", "lat": 19.0760, "lon": 72.8777, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 6, "RiverManagement": 5, "Deforestation": 4, "Urbanization": 17, "ClimateChange": 10, "DamsQuality": 6, "Siltation": 10, "AgriculturalPractices": 3, "Encroachments": 15, "IneffectiveDisasterPreparedness": 13, "DrainageSystems": 16, "CoastalVulnerability": 14, "Landslides": 1, "Watersheds": 5, "DeterioratingInfrastructure": 12, "PopulationScore": 17, "WetlandLoss": 14, "InadequatePlanning": 12, "PoliticalFactors": 8}},
+    {"event": "Srinagar Floods, J&K", "date": "2014-09-07", "lat": 34.0837, "lon": 74.7973, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 5, "RiverManagement": 4, "Deforestation": 8, "Urbanization": 8, "ClimateChange": 11, "DamsQuality": 5, "Siltation": 11, "AgriculturalPractices": 6, "Encroachments": 9, "IneffectiveDisasterPreparedness": 12, "DrainageSystems": 6, "CoastalVulnerability": 2, "Landslides": 7, "Watersheds": 9, "DeterioratingInfrastructure": 10, "PopulationScore": 9, "WetlandLoss": 12, "InadequatePlanning": 11, "PoliticalFactors": 8}},
+    {"event": "Kolhapur Floods, Maharashtra", "date": "2019-08-06", "lat": 16.7050, "lon": 74.2433, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 6, "RiverManagement": 5, "Deforestation": 7, "Urbanization": 9, "ClimateChange": 11, "DamsQuality": 6, "Siltation": 12, "AgriculturalPractices": 9, "Encroachments": 8, "IneffectiveDisasterPreparedness": 11, "DrainageSystems": 7, "CoastalVulnerability": 1, "Landslides": 5, "Watersheds": 8, "DeterioratingInfrastructure": 9, "PopulationScore": 8, "WetlandLoss": 9, "InadequatePlanning": 10, "PoliticalFactors": 7}},
+    {"event": "Patna Floods, Bihar", "date": "2019-09-28", "lat": 25.5941, "lon": 85.1376, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 7, "RiverManagement": 6, "Deforestation": 5, "Urbanization": 10, "ClimateChange": 10, "DamsQuality": 6, "Siltation": 14, "AgriculturalPractices": 7, "Encroachments": 11, "IneffectiveDisasterPreparedness": 13, "DrainageSystems": 13, "CoastalVulnerability": 2, "Landslides": 1, "Watersheds": 7, "DeterioratingInfrastructure": 13, "PopulationScore": 12, "WetlandLoss": 10, "InadequatePlanning": 13, "PoliticalFactors": 9}},
+    {"event": "Chamoli GLOF Flood, Uttarakhand", "date": "2021-02-07", "lat": 30.4157, "lon": 79.5680, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 3, "RiverManagement": 4, "Deforestation": 10, "Urbanization": 3, "ClimateChange": 15, "DamsQuality": 5, "Siltation": 11, "AgriculturalPractices": 4, "Encroachments": 3, "IneffectiveDisasterPreparedness": 14, "DrainageSystems": 4, "CoastalVulnerability": 1, "Landslides": 17, "Watersheds": 10, "DeterioratingInfrastructure": 11, "PopulationScore": 3, "WetlandLoss": 5, "InadequatePlanning": 13, "PoliticalFactors": 6}},
+    {"event": "Leh Cloudburst Flood, Ladakh", "date": "2010-08-06", "lat": 34.1526, "lon": 77.5771, "expected": "flood",
+     "vulnerability": {"TopographyDrainage": 4, "RiverManagement": 3, "Deforestation": 3, "Urbanization": 4, "ClimateChange": 12, "DamsQuality": 4, "Siltation": 9, "AgriculturalPractices": 3, "Encroachments": 4, "IneffectiveDisasterPreparedness": 14, "DrainageSystems": 3, "CoastalVulnerability": 1, "Landslides": 13, "Watersheds": 6, "DeterioratingInfrastructure": 10, "PopulationScore": 4, "WetlandLoss": 4, "InadequatePlanning": 12, "PoliticalFactors": 6}},
+    {"event": "Dharali — Dry Winter Day (control)", "date": "2025-02-05", "lat": 31.0408, "lon": 78.7811, "expected": "no_flood",
+     "vulnerability": {"TopographyDrainage": 4, "RiverManagement": 4, "Deforestation": 13, "Urbanization": 4, "ClimateChange": 14, "DamsQuality": 4, "Siltation": 12, "AgriculturalPractices": 6, "Encroachments": 5, "IneffectiveDisasterPreparedness": 13, "DrainageSystems": 4, "CoastalVulnerability": 1, "Landslides": 16, "Watersheds": 8, "DeterioratingInfrastructure": 12, "PopulationScore": 4, "WetlandLoss": 7, "InadequatePlanning": 12, "PoliticalFactors": 7}},
+    {"event": "Kedarnath — Dry Winter Day (control)", "date": "2013-01-17", "lat": 30.7346, "lon": 79.0669, "expected": "no_flood",
+     "vulnerability": {"TopographyDrainage": 3, "RiverManagement": 3, "Deforestation": 11, "Urbanization": 5, "ClimateChange": 12, "DamsQuality": 3, "Siltation": 13, "AgriculturalPractices": 5, "Encroachments": 6, "IneffectiveDisasterPreparedness": 15, "DrainageSystems": 3, "CoastalVulnerability": 1, "Landslides": 18, "Watersheds": 9, "DeterioratingInfrastructure": 13, "PopulationScore": 8, "WetlandLoss": 6, "InadequatePlanning": 14, "PoliticalFactors": 6}},
 ]
 
 
@@ -286,24 +311,38 @@ def historical_validation_set():
             test_input = {"MonsoonIntensity": derived_intensity, **ev["vulnerability"]}
             input_df = pd.DataFrame([test_input])[feature_columns]
             probability = max(0.0, min(1.0, float(model.predict(input_df)[0])))
+            severity = get_risk_level(probability)
+
+            correct = (
+                severity in ["High", "Severe"] if ev["expected"] == "flood"
+                else severity in ["Low", "Moderate"]
+            )
 
             results.append({
                 "event": ev["event"],
                 "date": ev["date"],
+                "expected": ev["expected"],
                 "actual_rainfall_mm": actual_rainfall,
                 "derived_monsoon_intensity": derived_intensity,
                 "predicted_risk_percentage": round(probability * 100, 2),
-                "predicted_severity": get_risk_level(probability),
+                "predicted_severity": severity,
+                "correctly_classified": correct,
             })
         except Exception as e:
             results.append({"event": ev["event"], "date": ev["date"], "error": str(e)})
 
-    flagged = sum(1 for r in results if r.get("predicted_severity") in ["Severe", "High"])
+    flood_events = [r for r in results if r.get("expected") == "flood"]
+    control_events = [r for r in results if r.get("expected") == "no_flood"]
+    flood_correct = sum(1 for r in flood_events if r.get("correctly_classified"))
+    control_correct = sum(1 for r in control_events if r.get("correctly_classified"))
+
     return {
-        "events_tested": len(HISTORICAL_EVENTS),
-        "flagged_severe_or_high": flagged,
+        "flood_events_tested": len(flood_events),
+        "flood_events_correctly_flagged": flood_correct,
+        "control_days_tested": len(control_events),
+        "control_days_correctly_avoided_false_alarm": control_correct,
         "results": results,
-        "note": "Rainfall is real historical data (Open-Meteo archive) for each event's actual date and location. Other 19 factors are estimated regional vulnerability values, not verified historical records.",
+        "note": "Rainfall is real historical data (Open-Meteo archive) for each event's actual date and location. Other 19 factors are estimated regional vulnerability values, not verified historical records. Control days test whether the model avoids false Severe alarms on non-flood days at the same high-vulnerability locations.",
     }
 @app.post("/notify")
 def notify_authorities(data: NotifyRequest):
@@ -363,3 +402,22 @@ def notify_authorities(data: NotifyRequest):
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+class ResponseAction(BaseModel):
+    station_name: str
+    action: str
+    notes: str = ""
+
+
+@app.post("/respond-to-alert")
+def respond_to_alert(data: ResponseAction):
+    log_audit("response_action", {
+        "station": data.station_name,
+        "action": data.action,
+        "notes": data.notes,
+    })
+    return {
+        "status": "logged",
+        "station": data.station_name,
+        "action": data.action,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }    
