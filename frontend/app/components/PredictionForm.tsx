@@ -18,6 +18,11 @@ const sliderFields = [
   { key: "Urbanization", label: "Urbanization Level" },
   { key: "ClimateChange", label: "Climate Change Impact" },
 ];
+function getQualitativeLabel(value: number): { text: string; color: string } {
+  if (value <= 6) return { text: "Low", color: "#4ade80" };
+  if (value <= 13) return { text: "Moderate", color: "#fbbf24" };
+  return { text: "High", color: "#f87171" };
+}
 const factorIcons: Record<string, string> = {
   MonsoonIntensity: "🌧️",
   Landslides: "🏔️",
@@ -87,9 +92,20 @@ export default function PredictionForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         {sliderFields.map((field) => (
           <div key={field.key}>
-            <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-1.5">
               <label className="text-slate-300 text-sm">{field.label}</label>
-              <span className="text-blue-400 text-sm font-medium">{values[field.key]}</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  style={{
+                    color: getQualitativeLabel(values[field.key]).color,
+                    backgroundColor: `${getQualitativeLabel(values[field.key]).color}20`,
+                  }}
+                >
+                  {getQualitativeLabel(values[field.key]).text}
+                </span>
+                <span className="text-blue-400 text-sm font-medium w-6 text-right">{values[field.key]}</span>
+              </div>
             </div>
             <input
               type="range"
