@@ -76,19 +76,22 @@ export async function getLivePrediction(
 export interface ValidationEvent {
   event: string;
   date: string;
+  expected: string;
   actual_rainfall_mm: number;
   derived_monsoon_intensity: number;
   predicted_risk_percentage: number;
   predicted_severity: string;
+  correctly_classified: boolean;
 }
 
 export interface ValidationSetResult {
-  events_tested: number;
-  flagged_severe_or_high: number;
+  flood_events_tested: number;
+  flood_events_correctly_flagged: number;
+  control_days_tested: number;
+  control_days_correctly_avoided_false_alarm: number;
   results: ValidationEvent[];
   note: string;
 }
-
 export async function getValidationSet(): Promise<ValidationSetResult> {
   const response = await axios.get(`${API_BASE_URL}/historical-validation-set`);
   return response.data;
