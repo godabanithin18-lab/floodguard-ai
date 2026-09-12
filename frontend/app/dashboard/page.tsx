@@ -116,8 +116,12 @@ const handleNotify = async () => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-[#111827] border border-slate-800 rounded-2xl p-5"
         >
-          <div className="text-slate-400 text-sm mb-1">Stations Monitored</div>
-          <div className="text-3xl font-bold text-white">{stations.length}</div>
+                    <div className="text-slate-400 text-sm mb-1">Stations Monitored</div>
+          {loading ? (
+            <div className="h-9 w-12 bg-slate-800 rounded animate-pulse" />
+          ) : (
+            <div className="text-3xl font-bold text-white">{stations.length}</div>
+          )}
         </motion.div>
 
         <motion.div
@@ -126,10 +130,13 @@ const handleNotify = async () => {
           transition={{ delay: 0.1 }}
           className="bg-[#111827] border border-slate-800 rounded-2xl p-5"
         >
-          <div className="text-slate-400 text-sm mb-1">Average Risk</div>
-          <div className="text-3xl font-bold text-white">{avgRisk}%</div>
+                    <div className="text-slate-400 text-sm mb-1">Average Risk</div>
+          {loading ? (
+            <div className="h-9 w-16 bg-slate-800 rounded animate-pulse" />
+          ) : (
+            <div className="text-3xl font-bold text-white">{avgRisk}%</div>
+          )}
         </motion.div>
-
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -140,9 +147,12 @@ const handleNotify = async () => {
             <AlertTriangle className="w-4 h-4 text-orange-400" />
             High Risk Zones
           </div>
-          <div className="text-3xl font-bold text-orange-400">{highCount}</div>
+                    {loading ? (
+            <div className="h-9 w-12 bg-slate-800 rounded animate-pulse" />
+          ) : (
+            <div className="text-3xl font-bold text-orange-400">{highCount}</div>
+          )}
         </motion.div>
-
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -153,7 +163,11 @@ const handleNotify = async () => {
             <TrendingUp className="w-4 h-4 text-red-400" />
             Severe Risk Zones
           </div>
-          <div className="text-3xl font-bold text-red-400">{severeCount}</div>
+          {loading ? (
+            <div className="h-9 w-12 bg-slate-800 rounded animate-pulse" />
+          ) : (
+            <div className="text-3xl font-bold text-red-400">{severeCount}</div>
+          )}
         </motion.div>
       </div>
             {!loading && severeCount > 0 && (
