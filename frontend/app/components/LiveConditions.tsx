@@ -20,6 +20,7 @@ interface StationLiveData {
   fetched_at: string;
   risk_percentage: number;
   risk_level: string;
+  degraded: boolean;
 }
 
 export default function LiveConditions() {
@@ -28,10 +29,10 @@ export default function LiveConditions() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    async function fetchAll() {
-      try {
-        const results = await Promise.all(
-          stations.map(async (station) => {
+        async function fetchAll() {
+      const results = await Promise.all(
+        stations.map(async (station) => {
+          try {
             const { weather, prediction } = await getLivePrediction(
               station.lat,
               station.lng,
@@ -45,16 +46,25 @@ export default function LiveConditions() {
               fetched_at: weather.fetched_at,
               risk_percentage: prediction.risk_percentage,
               risk_level: prediction.risk_level,
+              degraded: false,
             };
-          })
-        );
-        setData(results);
-      } catch (err) {
-        console.error(err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
+          } catch (err) {
+            console.error(`Live feed failed for ${station.name}:`, err);
+            return {
+              stationName: station.name,
+              district: station.district,
+              rainfall_mm: 0,
+              temperature_c: 0,
+              fetched_at: new Date().toISOString(),
+              risk_percentage: 0,
+              risk_level: "Unknown",
+              degraded: true,
+            };
+          }
+        })
+      );
+      setData(results);
+      setLoading(false);
     }
     fetchAll();
   }, []);
@@ -105,15 +115,15 @@ export default function LiveConditions() {
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="text-white font-medium text-sm">{station.stationName}</div>
-                                <div
+                                                  <div
                   className="flex items-center gap-1 text-[10px] font-medium"
-                  style={{ color: isStale(station.fetched_at) ? "#f59e0b" : "#4ade80" }}
+                  style={{ color: station.degraded ? "#f87171" : isStale(station.fetched_at) ? "#f59e0b" : "#4ade80" }}
                 >
                   <span
                     className="w-1.5 h-1.5 rounded-full animate-pulse"
-                    style={{ backgroundColor: isStale(station.fetched_at) ? "#f59e0b" : "#4ade80" }}
+                    style={{ backgroundColor: station.degraded ? "#f87171" : isStale(station.fetched_at) ? "#f59e0b" : "#4ade80" }}
                   />
-                  {isStale(station.fetched_at) ? "STALE" : "LIVE"}
+                  {station.degraded ? "FEED DEGRADED" : isStale(station.fetched_at) ? "STALE" : "LIVE"}
                 </div>
               </div>
               <div className="text-slate-500 text-xs mb-3">{station.district}</div>
