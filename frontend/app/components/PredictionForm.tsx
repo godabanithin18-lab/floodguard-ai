@@ -201,8 +201,24 @@ export default function PredictionForm() {
                 Primary driver: <span className="text-slate-300">{formatFactorName(result.primary_driver)}</span>
               </div>
             </div>
+                        {result.recommended_actions && result.recommended_actions.length > 0 && (
+              <div className="mt-4 bg-[#0d1420] border border-amber-900/40 rounded-xl p-5">
+                <h4 className="text-amber-400 font-medium text-sm mb-3 flex items-center gap-2">
+                  🚨 Recommended Response
+                </h4>
+                <div className="space-y-2">
+                  {result.recommended_actions.map((action: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                      <span className="text-amber-400 mt-0.5">→</span>
+                      {action}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )} 
           </motion.div>
         )}
+        
       </AnimatePresence>
 
       <div className="mt-6 pt-6 border-t border-slate-800">

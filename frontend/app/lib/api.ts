@@ -12,6 +12,12 @@ export interface PredictionResult {
   risk_level: string;
   factor_breakdown: FactorContribution[];
   primary_driver: string;
+  recommended_actions?: string[];
+  confidence?: {
+    input_range_confidence: string;
+    extreme_factor_count: number;
+    note: string;
+  };
 }
 
 export async function getPrediction(riskFactors: Record<string, number>): Promise<PredictionResult> {
