@@ -344,17 +344,60 @@ def historical_validation_set():
         "results": results,
         "note": "Rainfall is real historical data (Open-Meteo archive) for each event's actual date and location. Other 19 factors are estimated regional vulnerability values, not verified historical records. Control days test whether the model avoids false Severe alarms on non-flood days at the same high-vulnerability locations.",
     }
+DISTRICT_AUTHORITY_MAP = {
+    "Dharali": {"district": "Uttarkashi", "state": "Uttarakhand", "authority": "Uttarkashi District Disaster Management Authority"},
+    "Uttarkashi": {"district": "Uttarkashi", "state": "Uttarakhand", "authority": "Uttarkashi District Disaster Management Authority"},
+    "Manali": {"district": "Kullu", "state": "Himachal Pradesh", "authority": "Kullu District Disaster Management Authority"},
+    "Kullu Town": {"district": "Kullu", "state": "Himachal Pradesh", "authority": "Kullu District Disaster Management Authority"},
+    "Shimla": {"district": "Shimla", "state": "Himachal Pradesh", "authority": "Shimla District Disaster Management Authority"},
+    "Rishikesh": {"district": "Dehradun", "state": "Uttarakhand", "authority": "Dehradun District Disaster Management Authority"},
+}
+
+
+def get_routing_info(station_name: str) -> dict:
+    return DISTRICT_AUTHORITY_MAP.get(station_name, {
+        "district": "Unknown", "state": "Unknown", "authority": "Regional Disaster Management Authority"
+    })
+
+
+def format_sms_alert(station_name: str, risk_level: str, risk_percentage: float) -> str:
+    routing = get_routing_info(station_name)
+    short_authority = routing["authority"].replace("District Disaster Management Authority", "DDMA")
+    msg = f"FLOODGUARD ALERT: {station_name} {risk_level.upper()} {risk_percentage:.0f}% risk. Monitor conditions, follow official guidance. -{short_authority}"
+    return msg[:160]
+
+
+class SMSRequest(BaseModel):
+    station_name: str
+    risk_level: str
+    risk_percentage: float
+
+
+@app.post("/sms-format")
+def sms_format(data: SMSRequest):
+    text = format_sms_alert(data.station_name, data.risk_level, data.risk_percentage)
+    routing = get_routing_info(data.station_name)
+    return {
+        "sms_text": text,
+        "character_count": len(text),
+        "gateway_compatible": len(text) <= 160,
+        "routed_to": routing["authority"],
+        "district": routing["district"],
+        "state": routing["state"],
+        "note": "Formatted for low-bandwidth SMS gateway delivery — for use when internet connectivity fails during storms, a common condition in Himalayan hill regions.",
+    }
 @app.post("/notify")
 def notify_authorities(data: NotifyRequest):
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         return {"status": "error", "message": "Email service not configured on server."}
 
-    station_rows = "".join(
+        station_rows = "".join(
         f"<tr><td style='padding:8px 12px;border-bottom:1px solid #334155;'>{s['name']}</td>"
         f"<td style='padding:8px 12px;border-bottom:1px solid #334155;'>{s['district']}</td>"
         f"<td style='padding:8px 12px;border-bottom:1px solid #334155;color:#ef4444;font-weight:bold;'>{s['risk_level']}</td>"
-        f"<td style='padding:8px 12px;border-bottom:1px solid #334155;'>{s['risk_percentage']}%</td></tr>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #334155;'>{s['risk_percentage']}%</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #334155;font-size:11px;color:#94a3b8;'>{get_routing_info(s['name'])['authority']}</td></tr>"
         for s in data.stations
     )
 
@@ -368,6 +411,7 @@ def notify_authorities(data: NotifyRequest):
           <th style="padding:8px 12px;text-align:left;">District</th>
           <th style="padding:8px 12px;text-align:left;">Severity</th>
           <th style="padding:8px 12px;text-align:left;">Risk Score</th>
+          <th style="padding:8px 12px;text-align:left;">Routed To</th>
         </tr>
         {station_rows}
       </table>
