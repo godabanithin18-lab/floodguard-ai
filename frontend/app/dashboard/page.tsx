@@ -14,6 +14,7 @@ import HistoricalValidation from "../components/HistoricalValidation";
 import LiveConditions from "../components/LiveConditions";
 import ModelCard from "../components/ModelCard";
 import ValidationSet from "../components/ValidationSet";
+import OfflineModePanel from "../components/OfflineModePanel";
 
 // Leaflet map must load client-side only
 const FloodMap = dynamic(() => import("../components/FloodMap"), {
@@ -191,6 +192,11 @@ const handleNotify = async () => {
               {severeCount} station{severeCount > 1 ? "s are" : " is"} currently showing severe
               flood risk. Immediate monitoring and preparedness measures recommended.
             </div>
+                        <OfflineModePanel
+              stationName={results.find(r => r.risk_level === "Severe")?.name || ""}
+              riskLevel="Severe"
+              riskPercentage={results.find(r => r.risk_level === "Severe")?.risk_percentage || 0}
+            />
           </div>
                       <button
               onClick={handleNotify}

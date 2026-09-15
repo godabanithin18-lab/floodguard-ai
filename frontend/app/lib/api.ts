@@ -102,3 +102,25 @@ export async function getValidationSet(): Promise<ValidationSetResult> {
   const response = await axios.get(`${API_BASE_URL}/historical-validation-set`);
   return response.data;
 }
+export interface SMSFormatResult {
+  sms_text: string;
+  character_count: number;
+  gateway_compatible: boolean;
+  routed_to: string;
+  district: string;
+  state: string;
+  note: string;
+}
+
+export async function getSMSFormat(
+  stationName: string,
+  riskLevel: string,
+  riskPercentage: number
+): Promise<SMSFormatResult> {
+  const response = await axios.post(`${API_BASE_URL}/sms-format`, {
+    station_name: stationName,
+    risk_level: riskLevel,
+    risk_percentage: riskPercentage,
+  });
+  return response.data;
+}
